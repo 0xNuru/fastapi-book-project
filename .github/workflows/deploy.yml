@@ -20,9 +20,6 @@ jobs:
             # Navigate to project directory
             cd ~/fastapi-book-project
 
-            # Kill existing uvicorn process
-            pkill -f "uvicorn main:app"
-
             # Pull latest changes
             git pull origin main
 
@@ -30,9 +27,31 @@ jobs:
             source venv/bin/activate
             pip install -r requirements.txt
 
-            # Start the application with nohup
-            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+            # Check if a PID file exists
+            if [ -f app.pid ]; then
+              # Get the PID from the file
+              OLD_PID=$(cat app.pid)
+              if ps -p $OLD_PID > /dev/null; then
+                echo "Stopping existing process..."
+                kill $OLD_PID
+                # Wait for process to stop gracefully
+                sleep 5
+                # Force kill if still running
+                if ps -p $OLD_PID > /dev/null; then
+                  kill -9 $OLD_PID
+                fi
+              fi
+            fi
+
+            # Start the application with nohup and save PID
+            echo "Starting new process..."
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 & echo $! > app.pid
 
             # Wait a moment and check if process is running
             sleep 5
-            ps aux | grep "uvicorn main:app"
+            if ps -p $(cat app.pid) > /dev/null; then
+              echo "Deployment successful!"
+            else
+              echo "Deployment failed! Check app.log for details."
+              exit 1
+            fi
