@@ -1,4 +1,4 @@
-name: Deploy Pipeline
+name: CD Pipeline
 
 on:
   push:
@@ -16,4 +16,23 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: cd ~/fastapi-book-project && pkill -f "uvicorn main:app" || true && git pull origin main && source venv/bin/activate && pip install -r requirements.txt && nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 & && sleep 5 && ps aux | grep "uvicorn main:app"
+          script: |
+            # Navigate to project directory
+            cd ~/fastapi-book-project
+
+            # Kill existing uvicorn process
+            pkill -f "uvicorn main:app"
+
+            # Pull latest changes
+            git pull origin main
+
+            # Activate virtual environment and install dependencies
+            source venv/bin/activate
+            pip install -r requirements.txt
+
+            # Start the application with nohup
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+
+            # Wait a moment and check if process is running
+            sleep 5
+            ps aux | grep "uvicorn main:app"
